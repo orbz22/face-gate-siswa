@@ -1,5 +1,5 @@
 """
-UI Components Package
+Components Package
 """
 from .camera_frame import CameraFrame
 from .button_panel import ButtonPanel

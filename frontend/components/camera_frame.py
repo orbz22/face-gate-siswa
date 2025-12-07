@@ -1,8 +1,8 @@
 """
-Camera Frame Component - True Transparent Icon (Large)
+Camera Frame Component - dengan Face Detection overlay
 """
 import tkinter as tk
-from PIL import Image, ImageTk, ImageEnhance, ImageDraw, ImageFont
+from PIL import Image, ImageTk, ImageEnhance
 import config
 import os
 
@@ -17,20 +17,17 @@ class CameraFrame(tk.Frame):
         self.settings_icon_hover = None
         self.is_hovering = False
         
-        # ========================================
-        # SETTINGS ICON - KONFIGURASI
-        # ========================================
-        self.icon_x = 15        # Posisi X (dari kiri)
-        self.icon_y = 15        # Posisi Y (dari atas)  
-        self.icon_size = 56     # Ukuran icon (BESAR)
-        # ========================================
+        # Icon settings
+        self.icon_x = 15
+        self.icon_y = 15
+        self.icon_size = 40
         
         # Load settings icon
         self._load_settings_icon()
         
         # Camera display
         self.camera_label = tk.Label(
-            self, 
+            self,
             bg=config.COLOR_BLACK,
             cursor="arrow"
         )
@@ -44,55 +41,41 @@ class CameraFrame(tk.Frame):
         """Load settings icon"""
         try:
             if os.path.exists(config.ICON_SETTINGS):
-                # Load image dengan RGBA
                 img = Image.open(config.ICON_SETTINGS).convert('RGBA')
-                
-                # Resize sesuai icon_size
                 img = img.resize((self.icon_size, self.icon_size), Image.Resampling.LANCZOS)
                 
                 self.settings_icon_normal = img.copy()
                 
-                # Hover version - lebih terang
                 enhancer = ImageEnhance.Brightness(img)
                 self.settings_icon_hover = enhancer.enhance(1.5)
                 
                 print(f"✅ Settings icon loaded ({self.icon_size}x{self.icon_size})")
             else:
-                print(f"⚠️ Icon not found: {config.ICON_SETTINGS}")
                 self._create_fallback_icon()
-                
         except Exception as e:
             print(f"❌ Error loading icon: {e}")
             self._create_fallback_icon()
     
     def _create_fallback_icon(self):
-        """Create fallback gear icon"""
-        # Create transparent image
+        """Create fallback icon"""
+        from PIL import ImageDraw
+        
         img = Image.new('RGBA', (self.icon_size, self.icon_size), (0, 0, 0, 0))
         draw = ImageDraw.Draw(img)
         
-        # Font size proportional to icon size
-        font_size = int(self.icon_size * 0.7)
-        try:
-            font = ImageFont.truetype("arial.ttf", font_size)
-        except:
-            font = ImageFont.load_default()
-        
-        # Center text
-        text_x = self.icon_size // 6
-        text_y = self.icon_size // 10
-        draw.text((text_x, text_y), "⚙", fill=(255, 255, 255, 255), font=font)
+        # Draw gear
+        center = self.icon_size // 2
+        radius = self.icon_size // 3
+        draw.ellipse([center-radius, center-radius, center+radius, center+radius],
+                    outline=(255, 255, 255, 255), width=3)
         
         self.settings_icon_normal = img.copy()
         
-        # Hover version
         enhancer = ImageEnhance.Brightness(img)
         self.settings_icon_hover = enhancer.enhance(1.5)
-        
-        print(f"✅ Fallback icon created ({self.icon_size}x{self.icon_size})")
     
     def _is_over_icon(self, x, y):
-        """Check if mouse is over settings icon"""
+        """Check if over icon"""
         return (self.icon_x <= x <= self.icon_x + self.icon_size and
                 self.icon_y <= y <= self.icon_y + self.icon_size)
     
@@ -103,18 +86,15 @@ class CameraFrame(tk.Frame):
                 self.on_settings_click()
     
     def _on_mouse_move(self, event):
-        """Handle mouse movement for hover effect"""
+        """Handle mouse move"""
         over_icon = self._is_over_icon(event.x, event.y)
         
-        if over_icon and not self.is_hovering:
-            self.is_hovering = True
-            self.camera_label.config(cursor="hand2")
-        elif not over_icon and self.is_hovering:
-            self.is_hovering = False
-            self.camera_label.config(cursor="arrow")
+        if over_icon != self.is_hovering:
+            self.is_hovering = over_icon
+            self.camera_label.config(cursor="hand2" if over_icon else "arrow")
     
-    def update_frame(self, frame):
-        """Update camera display with icon overlay"""
+    def update_frame(self, frame, draw_icon=True):
+        """Update camera display"""
         if frame is None:
             return
         
@@ -125,32 +105,33 @@ class CameraFrame(tk.Frame):
             if display_w < 10 or display_h < 10:
                 return
             
-            # Convert frame to PIL
+            # Convert to PIL
             pil_image = Image.fromarray(frame)
             img_w, img_h = pil_image.size
             
-            # Calculate scale (fit, no crop)
+            # Calculate scale
             scale = min(display_w / img_w, display_h / img_h)
             new_w = int(img_w * scale)
             new_h = int(img_h * scale)
             
-            # Resize camera frame
+            # Resize
             resized = pil_image.resize((new_w, new_h), Image.Resampling.LANCZOS)
             
             # Create background
             background = Image.new('RGBA', (display_w, display_h), (0, 0, 0, 255))
             
-            # Center paste camera frame
+            # Center paste
             offset_x = (display_w - new_w) // 2
             offset_y = (display_h - new_h) // 2
             background.paste(resized, (offset_x, offset_y))
             
-            # Overlay settings icon (TRUE TRANSPARENCY)
-            icon = self.settings_icon_hover if self.is_hovering else self.settings_icon_normal
-            if icon:
-                background.paste(icon, (self.icon_x, self.icon_y), icon)
+            # Overlay settings icon
+            if draw_icon:
+                icon = self.settings_icon_hover if self.is_hovering else self.settings_icon_normal
+                if icon:
+                    background.paste(icon, (self.icon_x, self.icon_y), icon)
             
-            # Convert to PhotoImage
+            # Update
             self.photo = ImageTk.PhotoImage(background)
             self.camera_label.configure(image=self.photo)
             
