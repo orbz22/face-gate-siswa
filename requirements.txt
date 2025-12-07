@@ -1,0 +1,18 @@
+# Core Dependencies
+Pillow
+numpy
+opencv-python
+opencv-contrib-python
+
+# Face Recognition
+face-recognition
+dlib
+
+# Image Processing Utilities
+imutils
+
+# Database (Optional)
+sqlite3
+
+# Other Utilities
+python-dateutil
